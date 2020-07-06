@@ -17,12 +17,12 @@ This is just a quick README on using the various ansible playbooks and perl file
 ## Workflow
 The current workflow is as follows:
  - Create an ansible inventory file of hosts to be analysed (either FQDN or IPs)
-`
-[serinus]
-192.168.122.117
-192.168.122.137
-192.168.122.1
-`
+
+    [serinus]
+    192.168.122.117
+    192.168.122.137
+    192.168.122.1
+
  - Run the tcpflow.yml (currently defaults to use all in inventory)
  - `ansible-playbook -i inventory tcpflow.yml`
  - This will do the following:
