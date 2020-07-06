@@ -1,0 +1,65 @@
+---
+- name: "Generate tcpflow Report"
+  hosts: "localhost"
+  gather_facts: False
+  connection: "local"
+  remote_user: root
+  become: true
+  vars:
+    rpt_base_path: "/var/www/html"
+    processScript: "/home/cjenkins/tcdump/processFlow.pl"
+
+  tasks:
+
+   # Ensure there are tcpflow-report-*.xml file(s) in /var/tmp
+    - name: Check if there are tcpflow-report-*.xml file(s) in /var/tmp
+      shell: "ls /var/tmp/tcpflow/*tcpflow*.xml"
+      ignore_errors: yes
+      register: show_flow_files
+
+    - name: Fail if no report files /var/tmp/tcpflow
+      fail: msg="No tcpflow reports in /var/tmp/tcpflow"
+      when: show_flow_files.rc > 0
+
+    # Ensure http directory exists
+    - name: "Ensure directories are created"
+      file:
+        path: "{{ item }}"
+        state: "directory"
+      with_items:
+        - "{{ rpt_base_path }}/tcpflow"
+        - "{{ rpt_base_path }}/tcpflow/hosts"
+        - "{{ rpt_base_path }}/tcpflow/css"
+        - "{{ rpt_base_path }}/tcpflow/js"
+        - "{{ rpt_base_path }}/tcpflow/hosts"
+        - "{{ rpt_base_path }}/tcpflow/hosts/css"
+        - "{{ rpt_base_path }}/tcpflow/hosts/js"
+
+    # Copy the vis js file
+    - name: "Copy vis-network.min.js"
+      copy:
+        src: "vis-network.min.js"
+        dest: "{{ rpt_base_path }}/tcpflow/js"
+
+    # Copy the css file
+    - name: "Copy style.css"
+      copy:
+        src: "style.css"
+        dest: "{{ rpt_base_path }}/tcpflow/css"
+
+
+    # Copy the vis js file
+    - name: "Copy vis-network.min.js"
+      copy:
+        src: "vis-network.min.js"
+        dest: "{{ rpt_base_path }}/tcpflow/hosts/js"
+
+    - name: "Process each file"
+      shell: "cd /var/tmp/tcpflow; {{ processScript }} {{ item | basename }}"
+      with_items: "{{ show_flow_files.stdout_lines }}"
+
+    - name: Create one big file of all the results files
+      shell: "cat /var/tmp/tcpflow/tcpflow-report-*.xml > /var/tmp/tcpflow/all-tcpflow.xml"
+
+    - name: "Process the concatinated file"
+      shell: "cd /var/tmp/tcpflow; {{ processScript }} all-tcpflow.xml"

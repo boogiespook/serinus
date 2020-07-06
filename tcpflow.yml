@@ -1,0 +1,50 @@
+---
+- name: "Get tcp ports and set off tcpflow"
+  hosts: "canary"
+  remote_user: root
+  become: true
+  gather_facts: False
+
+  vars:
+    tcpFlowString: ""
+    tcpflow_file: /var/tmp/tcpflow/tcpflow-report-{{ inventory_hostname }}.xml
+
+  tasks:
+
+#    - name: Ensure tcpflow is installed
+#      yum:
+#        name: tcpflow
+#        state: latest
+
+    - name: "Find all open ports"
+      shell: netstat -plnt | awk '$1 ~ /^t/ {print $4}' | awk -F":" '$0 ~ /[0-9]/ {print $NF}' | sort -u
+      register: openports
+      vars:
+        tcpFlowString: "tcpflow  -X {{ tcpflow_file }} -FX port '({{ openports.stdout_lines | join(' or ') }})'  < /dev/null > /dev/null 2>&1 &"
+
+    - name: Create tcpflow directory in /var/tmp
+      file:
+        path: /var/tmp/tcpflow
+        state: directory
+        mode: '0755'
+
+    - name: Check if tcpflow is already running
+      shell: pgrep tcpflow > /dev/null
+      ignore_errors: yes
+      changed_when: false
+      register: tcpflow_status
+
+    - name: Start tcpflow
+      shell: "cd /var/tmp/tcpflow; nohup tcpflow -X {{ tcpflow_file }} dst port '({{ openports.stdout_lines | join(' or ') }})'  < /dev/null > /dev/null 2>&1 &"
+      when: tcpflow_status.rc == 1
+
+    - name: Stop tcpflow
+      command: pkill tcpflow
+      when: tcpflow_status.rc == 0
+
+    - name: Fetch file from remote host to localhost
+      fetch:
+        src: "{{ tcpflow_file }}"
+        dest: /var/tmp/tcpflow/
+        flat: yes
+
