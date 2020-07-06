@@ -39,5 +39,7 @@ Once you have all the results in /var/tmp/ on you localhost, you can then run ge
   
 You should then end up with the output files in /var/www/html/tcpflow
 
+![Screenshot](https://github.com/boogiespook/serinus/blob/master/screenshot.png)
+
 To see the results, visit: https://localhost/tcpflow
 
